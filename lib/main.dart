@@ -45,7 +45,7 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
   //和服务器的线程是app启动就连接了，小车的连接是在用户点击进入按钮才开始连接的
 
   //点击进入按钮执行
-  Future<void> login() async {
+  void login() {
     //要求用户填充好用户名称小车ip并且选择房间号，如果没有填充好便点击进入则弹出提示
     if (checkroomsuccess & _usernameController.text.isNotEmpty & checkboardsuccess && _selectboardnumber!=boardvalue) {
       String username = _usernameController.text;
@@ -59,10 +59,13 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
       roomshowlist = ['创建房间'];
       
       // 检查 channel2 的连接状态
-      try{
         channel2 = IOWebSocketChannel.connect('ws://${_selectboardnumber}:11451',connectTimeout:new Duration(seconds: 3));
-      }catch(e ){
-        showDialog(
+        channel2!.sink.add("request_check:()");
+        channel2!.stream.timeout(
+          Duration(seconds: 3),
+          onTimeout: (sink) => <void>{
+            sink.close(),
+            showDialog(
           context: context,
           builder: (BuildContext context) {
             return AlertDialog(
@@ -78,8 +81,11 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
               ],
             );
           },
+        )
+          },
         );
-      }
+        
+      
       // 只有当 channel2 连接成功时，才导航到 RoomPageDemo 页面
       if (isChannel2Connected) {
         Navigator.push(
@@ -167,10 +173,10 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
 
   List<String> generateRoomList(List<String> numbersList) {
     Set<String> uniqueRooms = {"创建房间"};
-
-    if (numbersList.length > 1) {
+    List<String> uniqueRoomids=numbersList.toSet().toList();
+    if (uniqueRoomids.length > 1) {
       for (int i = 1; i < numbersList.length; i++) {
-        uniqueRooms.add("房间$i:${numbersList[i]}");
+        uniqueRooms.add("房间$i:${uniqueRoomids[1]}");
       }
     }
 
@@ -210,6 +216,7 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
           print(message);
           String roomnumberString = message.replaceAll(RegExp(r'response_list_rooms:|\(|\)'), '');
           roomlist = roomnumberString.split(',');
+          print(roomlist);
           roomshowlist = generateRoomList(roomlist);
           setState(() {});
           print('Received message: $roomshowlist');

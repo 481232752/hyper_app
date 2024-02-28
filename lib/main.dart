@@ -43,9 +43,8 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
           ));
   }
   //和服务器的线程是app启动就连接了，小车的连接是在用户点击进入按钮才开始连接的
-
   //点击进入按钮执行
-  void login() {
+  Future<void> login() async {
     //要求用户填充好用户名称小车ip并且选择房间号，如果没有填充好便点击进入则弹出提示
     if (checkroomsuccess & _usernameController.text.isNotEmpty & checkboardsuccess && _selectboardnumber!=boardvalue) {
       String username = _usernameController.text;
@@ -57,15 +56,14 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
       _selectroomnumber = '';
       roomlist = ['0000'];
       roomshowlist = ['创建房间'];
-      
       // 检查 channel2 的连接状态
+      try{
         channel2 = IOWebSocketChannel.connect('ws://${_selectboardnumber}:11451',connectTimeout:new Duration(seconds: 3));
+        await channel2!.ready;
         channel2!.sink.add("request_check:()");
-        channel2!.stream.timeout(
-          Duration(seconds: 3),
-          onTimeout: (sink) => <void>{
-            sink.close(),
-            showDialog(
+      }catch(e){
+        print("超时！");
+        showDialog(
           context: context,
           builder: (BuildContext context) {
             return AlertDialog(
@@ -81,10 +79,9 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
               ],
             );
           },
-        )
-          },
         );
-        
+        channel2=null;
+      }
       
       // 只有当 channel2 连接成功时，才导航到 RoomPageDemo 页面
       if (isChannel2Connected) {
@@ -246,9 +243,9 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
   
   String generateRegisterRoomNumber(String x) {
     String str = '';
-    if (x != "创建房间") {
+    if (x != "创建房间" && x.split(":").length>=2) {
       str = x.split(":")[1];
-    } else {
+    } else if(x=="创建房间") {
       str = roomlist[0];
     }
     return str;

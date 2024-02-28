@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -13,7 +14,6 @@ class HorizontalLoginScreen extends StatefulWidget {
 
 class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
   final TextEditingController _usernameController = TextEditingController();
-  final TextEditingController _serverPortController = TextEditingController();
   bool isChannel2Connected = false;
   String _selectroomnumber = '';
   List<String> roomlist = ['0000'];
@@ -31,7 +31,10 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
       IOWebSocketChannel.connect('ws://1.13.2.149:11451');
   WebSocketChannel? channel2;
   @override
+
+  //初始化函数
   void initState() {
+    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     super.initState();
     startListening();
     requestListBoards();
@@ -42,8 +45,31 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
           value: boardvalue
           ));
   }
+  
+  //弹窗函数
+  void showDialogF(String title,String text){
+    showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text(title),
+              content: Text(text),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: Text('确定'),
+                ),
+              ],
+            );
+          },
+        );
+  }
+
   //和服务器的线程是app启动就连接了，小车的连接是在用户点击进入按钮才开始连接的
   //点击进入按钮执行
+  //进入函数
   Future<void> login() async {
     //要求用户填充好用户名称小车ip并且选择房间号，如果没有填充好便点击进入则弹出提示
     if (checkroomsuccess & _usernameController.text.isNotEmpty & checkboardsuccess && _selectboardnumber!=boardvalue) {
@@ -59,108 +85,51 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
       // 检查 channel2 的连接状态
       try{
         channel2 = IOWebSocketChannel.connect('ws://${_selectboardnumber}:11451',connectTimeout:new Duration(seconds: 3));
+        print('连接ip:ws://${_selectboardnumber}:11451');
         await channel2!.ready;
-        channel2!.sink.add("request_check:()");
+        isChannel2Connected = true;
       }catch(e){
         print("超时！");
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: Text('连接失败'),
-              content: Text('无法连接到小车，请检查IP地址后重试。'),
-              actions: <Widget>[
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: Text('确定'),
-                ),
-              ],
-            );
-          },
-        );
+        showDialogF("连接失败", "无法连接到小车，请检查IP地址后重试。");
         channel2=null;
       }
       
       // 只有当 channel2 连接成功时，才导航到 RoomPageDemo 页面
       if (isChannel2Connected) {
+        channel2!.sink.add("request_occupy:()");
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => RoomPageDemo(
+            builder: (context) => RoomPage(
+              test: "连接成功！",
               channel1: channel,
-              //channel2: channel2,
+              channel2: channel2,
             ),
           ),
         );
       }
-
       print(register);
     } else if (_usernameController.text.isEmpty) {
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text('提示：'),
-            content: Text('请填写用户名称！'),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: Text('OK'),
-              ),
-            ],
-          );
-        },
-      );
+      //未填写用户名称
+      showDialogF("提示：", '请填写用户名称！');
     }else if(checkboardsuccess==false){
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text('提示：'),
-            content: Text('请填写小车ip！'),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: Text('OK'),
-              ),
-            ],
-          );
-        },
-      );
-    
+      //未选择小车
+      showDialogF("提示：", "请选择设备！");
     }else if(checkroomsuccess ==false){
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text('提示：'),
-            content: Text('请选择房间！'),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: Text('OK'),
-              ),
-            ],
-          );
-        },
-      );
+      //未选择房间
+      showDialogF("提示：", "请选择房间！");
     }
   }
 
+  //发送更新房间列表请求
   void requestListRooms() {
     setState(() {
       channel.sink.add("request_list_rooms:()");
     });
     print("发送请求，更新房间列表：$roomshowlist");
   }
+  
+  //发送更新主板列表请求
   void requestListBoards(){
     setState(() {
       channel.sink.add("request_list_boards:()");
@@ -168,18 +137,21 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
     print("发送请求，更新主板列表：$boardShowList");
   }
 
+  //更新房间列表
   List<String> generateRoomList(List<String> numbersList) {
     Set<String> uniqueRooms = {"创建房间"};
     List<String> uniqueRoomids=numbersList.toSet().toList();
     if (uniqueRoomids.length > 1) {
       for (int i = 1; i < numbersList.length; i++) {
-        uniqueRooms.add("房间$i:${uniqueRoomids[1]}");
+        uniqueRooms.add("房间$i:${uniqueRoomids[i]}");
       }
     }
 
     List<String> result = uniqueRooms.toList();
     return result;
   }
+  
+  //更新主板列表
   List<DropdownMenuItem<String>> generateBoardList(List<Match> boardResponseList){
     List<DropdownMenuItem<String>> result=[];
     if(boardResponseList.length!=0){
@@ -206,16 +178,18 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
     return result;
   }
 
+  //监听函数（处理服务器发来的信息）1.房间列表信息 2.主板列表信息
   void startListening() {
     subscription = channel.stream.listen(
       (message) {
         if (message.contains("response_list_rooms:")) {
           print(message);
+          setState(() {});
           String roomnumberString = message.replaceAll(RegExp(r'response_list_rooms:|\(|\)'), '');
           roomlist = roomnumberString.split(',');
           print(roomlist);
           roomshowlist = generateRoomList(roomlist);
-          setState(() {});
+          
           print('Received message: $roomshowlist');
         }
         else if(message.contains("response_list_boards:")){
@@ -227,7 +201,6 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
           RegExp regex = RegExp(r'\((.*?),(.*?),(.*?)\)');
           Iterable<Match> matches = regex.allMatches(matchedStr);
           List<Match> boardResponseList=matches.toList();
-          //print("这是测试第二步：${boardResponseList[1].group(0)},${boardResponseList[0].group(0)}");
           boardShowList=generateBoardList(boardResponseList);
           setState(() {});
           print(message);
@@ -241,6 +214,7 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
     );
   }
   
+  //生成用户登录信息
   String generateRegisterRoomNumber(String x) {
     String str = '';
     if (x != "创建房间" && x.split(":").length>=2) {
@@ -271,7 +245,11 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
                 isExpanded: true,
                 decoration: const InputDecoration(border: OutlineInputBorder(), labelText: '选择设备'),
                 hint: Text("请选择设备"),
-                onTap: () => requestListBoards(),
+                onTap: () {
+                  setState(() {
+                    
+                  });
+                  requestListBoards();},
                 onChanged: (String? newPosition) {
                   setState(() {
                     if (newPosition != null) {
@@ -291,7 +269,8 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
                 isExpanded: true,
                 decoration: const InputDecoration(border: OutlineInputBorder(), labelText: '选择房间'),
                 hint: Text("请选择房间"),
-                onTap: () => requestListRooms(),
+                onTap: () {
+                  requestListRooms();} ,
                 onChanged: (String? newPosition) {
                   setState(() {
                     if (newPosition != null) {
@@ -322,8 +301,10 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
   }
 
   @override
+  //资源释放
   void dispose() {
     channel.sink.close();
+    channel2!.sink.close();
     super.dispose();
   }
 }

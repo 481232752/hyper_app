@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'main.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
-class RoomPage extends StatefulWidget {
+
+import 'main.dart';
+
+// 遥感部件
+class Joystick extends StatefulWidget {
   final Function(Offset) onJoystickChanged;
 
-  const RoomPage({Key? key, required this.onJoystickChanged}) : super(key: key);
+  const Joystick({Key? key, required this.onJoystickChanged}) : super(key: key);
 
   @override
-  _RoomPageState createState() => _RoomPageState();
+  _JoystickState createState() => _JoystickState();
 }
 
-class _RoomPageState extends State<RoomPage> {
+class _JoystickState extends State<Joystick> {
   Offset _position = Offset(0, 0);
 
   @override
@@ -25,7 +28,7 @@ class _RoomPageState extends State<RoomPage> {
         });
       },
       child: Container(
-        margin: EdgeInsets.fromLTRB(0,0, 600, 0), // 设置左上角位置偏移为 (50, 50)
+        margin: EdgeInsets.fromLTRB(0, 0, 600, 0), // 设置左上角位置偏移为 (50, 50)
         width: 100,
         height: 100,
         decoration: BoxDecoration(
@@ -50,48 +53,80 @@ class _RoomPageState extends State<RoomPage> {
   }
 }
 
-class RoomPageDemo extends StatelessWidget {
+// 房间页面
+class RoomPage extends StatelessWidget {
   final WebSocketChannel channel1;
-  //final WebSocketChannel channel2;
+  final WebSocketChannel? channel2;
+  final String test;
 
-  const RoomPageDemo({Key? key, 
-  required this.channel1, 
-  //测试不需要
-  //required this.channel2
-  })
-      : super(key: key);
+  const RoomPage({
+    Key? key,
+    required this.test,
+    required this.channel1,
+    required this.channel2,
+  }) : super(key: key);
+
+  void startListening() {
+    channel2!.stream.listen(
+      (message) {},
+      onError: (error) {
+        print('Error: $error');
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    print(test);
+    channel1.sink.add("hello form roompage!");
+    channel2!.sink.add("hello form roompage!");
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft, // 横屏左向
       DeviceOrientation.landscapeRight, // 横屏右向
     ]);
     return Scaffold(
       appBar: AppBar(
-        title: Center(child: Text("控制界面"),),
-        leading:IconButton( // 添加返回按钮
+        title: Center(child: Text("控制界面")),
+        leading: IconButton(
           icon: Icon(Icons.arrow_back),
           onPressed: () {
-            // 返回到 main 页面并重新加载
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => HorizontalLoginScreen()),
-              );
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => HorizontalLoginScreen()),
+            );
           },
         ),
       ),
-      body: Center(
-        child: RoomPage(
-          onJoystickChanged: (Offset offset) {
-            // 处理摇杆移动事件
-            print(offset);
-          },
-        ),
+      body: Stack(
+        children: [
+          Center(
+            child: Joystick(
+              onJoystickChanged: (Offset offset) {
+                channel1.sink.add(offset.toString());
+                channel2?.sink.add(offset.toString());
+                print(offset);
+              },
+            ),
+          ),
+          Positioned(
+            bottom: 20,
+            right: 20,
+            child: ElevatedButton(
+              onPressed: () {
+                print("灯亮!");
+                channel2!.sink.add('updata_gpio:((0,1))');
+                //(a,b) a为部件编号 b为状态
+              },
+              child: Text("开灯"),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
+
+
 
 
 

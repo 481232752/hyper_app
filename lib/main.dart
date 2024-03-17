@@ -2,10 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hyper_app/administratorPage.dart';
+import 'package:hyper_app/controlPage.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-import 'RoomPage.dart';
+
 
 class HorizontalLoginScreen extends StatefulWidget {
   @override
@@ -14,6 +16,7 @@ class HorizontalLoginScreen extends StatefulWidget {
 
 class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
   final TextEditingController _usernameController = TextEditingController();
+  int administratorCheck=0;
   bool isChannel2Connected = false;
   String _selectroomnumber = '';
   List<String> roomlist = ['0000'];
@@ -39,11 +42,12 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
     startListening();
     requestListBoards();
     requestListRooms();
-    
+    administratorCheck=0;
     boardShowList.add(DropdownMenuItem(
-          child: Text(""),
+          child: Text("暂无可用小车"),
           value: boardvalue
           ));
+
   }
   
   //弹窗函数
@@ -78,7 +82,6 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
 
       String register = "register_app:($username,$roomnumber)";
       channel.sink.add(register);
-      
       _selectroomnumber = '';
       roomlist = ['0000'];
       roomshowlist = ['创建房间'];
@@ -100,7 +103,7 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => RoomPage(
+            builder: (context) => ControlPage(
               test: "连接成功！",
               channel1: channel,
               channel2: channel2,
@@ -112,7 +115,7 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
     } else if (_usernameController.text.isEmpty) {
       //未填写用户名称
       showDialogF("提示：", '请填写用户名称！');
-    }else if(checkboardsuccess==false){
+    }else if(checkboardsuccess==false || _selectboardnumber==boardvalue){
       //未选择小车
       showDialogF("提示：", "请选择设备！");
     }else if(checkroomsuccess ==false){
@@ -154,6 +157,7 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
   //更新主板列表
   List<DropdownMenuItem<String>> generateBoardList(List<Match> boardResponseList){
     List<DropdownMenuItem<String>> result=[];
+
     if(boardResponseList.length!=0){
     for(int i=0;i<boardResponseList.length;i++){
       result.add(
@@ -162,19 +166,19 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
           value: boardResponseList[i].group(3)!
           ));
     }
-    
     }
     else{
-      List<DropdownMenuItem<String>> result=[];
+      print("执行长度为0函数！");
       String valuee="0000";
       result.add(
-        DropdownMenuItem(child: Text("暂无小车"),
+        DropdownMenuItem(
+        child: Text("暂无小车"),
         value: valuee
         )
       );
-
+      print("结果长度:${result.length}");
+      print("结果信息:${result[0].child}");
     }
-
     return result;
   }
 
@@ -201,10 +205,13 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
           RegExp regex = RegExp(r'\((.*?),(.*?),(.*?)\)');
           Iterable<Match> matches = regex.allMatches(matchedStr);
           List<Match> boardResponseList=matches.toList();
-          boardShowList=generateBoardList(boardResponseList);
-          setState(() {});
+          
+          setState(() {
+            boardShowList=generateBoardList(boardResponseList);
+          });
           print(message);
           print("Received board message:$boardShowList");
+          print("列表长度：${boardResponseList.length}");
           
         }
       },
@@ -228,7 +235,28 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('登录'),),
+      appBar: AppBar(title: GestureDetector(
+        child: Text('登录'),
+        onTap: (){
+          administratorCheck+=1;
+          print("进入管理员系统step1:$administratorCheck");
+        },
+        onLongPress: (){
+          print("进入管理员系统step2:$administratorCheck");
+          if(administratorCheck>=9){
+            print("进入管理员系统成功！");
+            Navigator.push(context,
+            MaterialPageRoute(
+            builder: (context) =>DashboardScreen()
+            ));
+      
+          }
+          else{
+            print("进入管理员系统失败！");
+            }
+          administratorCheck=0;
+        },
+        ),),
       body: SingleChildScrollView(
         child: Container(
           padding: EdgeInsets.all(16.0),
@@ -246,9 +274,6 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
                 decoration: const InputDecoration(border: OutlineInputBorder(), labelText: '选择设备'),
                 hint: Text("请选择设备"),
                 onTap: () {
-                  setState(() {
-                    
-                  });
                   requestListBoards();},
                 onChanged: (String? newPosition) {
                   setState(() {
@@ -261,7 +286,6 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
                     print("选择的ip：$_selectboardnumber");
                   });
                 },
-
                 items: boardShowList
               ),
               SizedBox(height: 16.0),

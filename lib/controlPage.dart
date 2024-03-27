@@ -95,6 +95,7 @@ class _ControlPageState extends State<ControlPage> {
   bool _isExpanded = false;
   int _health = 100; // 初始血量为100
   int lightState=0;
+
   // 添加此方法以便跳转到排行榜页面
   void _navigateToRankings(BuildContext context) {
     Navigator.push(
@@ -123,7 +124,15 @@ class _ControlPageState extends State<ControlPage> {
       print("开灯！！！！");
     }
   }
-
+  void startListening() {
+    
+  }
+  @override
+void initState(){
+  super.initState();
+    // 开始监听WebSocket
+  
+}
   @override
   Widget build(BuildContext context) {
     print(widget.test);
@@ -159,7 +168,7 @@ class _ControlPageState extends State<ControlPage> {
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
           onPressed: () {
-            Navigator.pushReplacement(
+            Navigator.pop(
               context,
               MaterialPageRoute(builder: (context) => HorizontalLoginScreen()),
             );
@@ -199,8 +208,8 @@ class _ControlPageState extends State<ControlPage> {
           Center(
             child: Joystick(
               onJoystickChanged: (Offset offset) {
-                widget.channel1.sink.add(offset.toString());
-                widget.channel2?.sink.add(offset.toString());
+                widget.channel1.sink.add("update_offset:(${offset.dx.toString()},${offset.dy.toString()})");
+                widget.channel2?.sink.add("update_offset:(${offset.dx.toString()},${offset.dy.toString()})");
                 print(offset);
               },
             ),
@@ -300,42 +309,6 @@ class _ControlPageState extends State<ControlPage> {
   }
 }
 
-// class RankingsScreen extends StatelessWidget {
-//   final WebSocketChannel channel1;
-//   final WebSocketChannel? channel2;
-
-//   const RankingsScreen({
-//     Key? key,
-//     required this.channel1,
-//     required this.channel2,
-//   }) : super(key: key);
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: Text("排行榜"),
-//       ),
-//       body: Center(
-//         child: Text("Rankings will be displayed here"),
-//       ),
-//     );
-//   }
-// }
-
-// class HorizontalLoginScreen extends StatelessWidget {
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: Text("Horizontal Login"),
-//       ),
-//       body: Center(
-//         child: Text("Horizontal Login Screen"),
-//       ),
-//     );
-//   }
-// }
 
 
 

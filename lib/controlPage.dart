@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hyper_app/ResoureManager.dart';
 import 'package:hyper_app/leaderboardPage.dart';
 import 'package:hyper_app/main.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -11,7 +12,7 @@ void main() {
     MaterialApp(
       home: ControlPage(
         test: "你好",
-        channel1: WebSocketChannel.connect(Uri.parse('ws://1.13.2.149:11451')),
+
         channel2: WebSocketChannel.connect(Uri.parse('ws://1.13.2.149:11451')),
       ),
     ),
@@ -76,14 +77,14 @@ class _JoystickState extends State<Joystick> {
 
 // 操控页面
 class ControlPage extends StatefulWidget {
-  final WebSocketChannel channel1;
+
   final WebSocketChannel? channel2;
   final String test;
 
   const ControlPage({
     Key? key,
     required this.test,
-    required this.channel1,
+
     required this.channel2,
   }) : super(key: key);
 
@@ -100,7 +101,7 @@ class _ControlPageState extends State<ControlPage> {
   void _navigateToRankings(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => RankingsScreen(channel1: widget.channel1, channel2: widget.channel2,)),
+      MaterialPageRoute(builder: (context) => RankingsScreen(channel2: widget.channel2,)),
     );
   }
 
@@ -124,12 +125,11 @@ class _ControlPageState extends State<ControlPage> {
       print("开灯！！！！");
     }
   }
-  void startListening() {
-    
-  }
+
   @override
 void initState(){
   super.initState();
+  ResourceManager().heartAble();
     // 开始监听WebSocket
   
 }
@@ -141,8 +141,8 @@ void initState(){
       DeviceOrientation.landscapeRight,
       DeviceOrientation.landscapeLeft,
     ]);
+    ResourceManager().streamAdd("hello from roompage!");
 
-    widget.channel1.sink.add("hello from roompage!");
     widget.channel2?.sink.add("hello from roompage!");
 
     return Scaffold(
@@ -208,7 +208,8 @@ void initState(){
           Center(
             child: Joystick(
               onJoystickChanged: (Offset offset) {
-                widget.channel1.sink.add("update_offset:(${offset.dx.toString()},${offset.dy.toString()})");
+          
+                ResourceManager().streamAdd("update_offset:(${offset.dx.toString()},${offset.dy.toString()})");
                 widget.channel2?.sink.add("update_offset:(${offset.dx.toString()},${offset.dy.toString()})");
                 print(offset);
               },

@@ -2,13 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hyper_app/ResoureManager.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 void main() {
   runApp(
     MaterialApp(
       home: RankingsScreen(
-        channel1: WebSocketChannel.connect(Uri.parse('ws://1.13.2.149:11451')),
+
         channel2: WebSocketChannel.connect(Uri.parse('ws://1.13.2.149:11451')),
       ),
     ),
@@ -16,9 +17,9 @@ void main() {
 }
 
 class RankingsScreen extends StatefulWidget {
-  final WebSocketChannel channel1;
+
   final WebSocketChannel? channel2;
-  const RankingsScreen({Key? key, required this.channel1,required this.channel2}) : super(key: key);
+  const RankingsScreen({Key? key,required this.channel2}) : super(key: key);
 
   @override
   _RankingsScreenState createState() => _RankingsScreenState();
@@ -55,6 +56,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
     user_rank_all = _generateUsers(16);
     user_rank_month = _generateUsers(16);
     user_rank_week = _generateUsers(6);
+    ResourceManager().heartAble();
     myStreamController.stream.listen((message) {
       if (message.contains("response_rank_list:")) {
         setState(() {
@@ -64,6 +66,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
         });
       }
     });
+
   }
 
   @override

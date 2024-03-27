@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:hyper_app/ResoureManager.dart';
 import 'package:hyper_app/administratorPage.dart';
 import 'package:hyper_app/controlPage.dart';
 import 'package:web_socket_channel/io.dart';
@@ -21,13 +22,12 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
   bool checkboardsuccess = false; // 是否选择设备成功标志
   String _selectroomnumber = ''; // 选定的房间号
   List<String> roomlist = ['0000']; // 房间号列表
-  List<String> roomshowlist = ['创建房间']; // 房间号显示列表
+
   String boardvalue = "0000"; // 默认设备号
   List<String> boardIpList = []; // 设备IP列表
-  List<DropdownMenuItem<String>> boardShowList = []; // 设备显示列表
+  
   String _selectboardnumber = '0000'; // 选定的设备号
   StreamSubscription<dynamic>? subscription; // WebSocket监听
-  final WebSocketChannel channel = IOWebSocketChannel.connect('ws://1.13.2.149:11451'); // WebSocket通道
   WebSocketChannel? channel2; // 第二个WebSocket通道，未使用
   bool isChannel2Connected=false;
   int administratorCheck = 0; // 管理员检查计数器
@@ -80,7 +80,7 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
       String roomnumber = generateRegisterRoomNumber(_selectroomnumber);
 
       String register = "register_app:($username,$roomnumber)";
-      channel.sink.add(register);
+      ResourceManager().streamAdd(register);
       try{
         channel2 = IOWebSocketChannel.connect('ws://${_selectboardnumber}:11451',connectTimeout:new Duration(seconds: 3));
         print('连接ip:ws://${_selectboardnumber}:11451');
@@ -113,7 +113,6 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
             MaterialPageRoute(
               builder: (context) => ControlPage(
                 test: "连接成功！",
-                channel1: channel,
                 channel2: channel2,
               ),
             ),
@@ -144,14 +143,14 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
   // 请求房间列表
   void requestListRooms() {
     setState(() {
-      channel.sink.add("request_list_rooms:()");
+      ResourceManager().streamAdd("request_list_rooms:()");
     });
   }
 
   // 请求设备列表
   void requestListBoards() {
     setState(() {
-      channel.sink.add("request_list_boards:()");
+      ResourceManager().streamAdd("request_list_boards:()");
     });
   }
 
@@ -169,28 +168,11 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
     return result;
   }
 
-  // 生成设备列表
-  List<DropdownMenuItem<String>> generateBoardList(
-      List<Match> boardResponseList) {
-    List<DropdownMenuItem<String>> result = [];
-
-    if (boardResponseList.length != 0) {
-      for (int i = 0; i < boardResponseList.length; i++) {
-        result.add(DropdownMenuItem(
-            child: Text(
-                "小车编号:${boardResponseList[i].group(1)!}   WIFI名:${boardResponseList[i].group(2)!}"),
-            value: boardResponseList[i].group(3)!));
-      }
-    } else {
-      String valuee = "0000";
-      result.add(DropdownMenuItem(child: Text("暂无小车"), value: valuee));
-    }
-    return result;
-  }
+  
 
   // 开始监听WebSocket
   void startListening() {
-    subscription = channel.stream.listen(
+    subscription=ResourceManager().stream.listen(
       (message) {
         if (message.contains("response_list_rooms:")) {
           setState(() {});
@@ -352,7 +334,7 @@ class _HorizontalLoginScreenState extends State<HorizontalLoginScreen> {
 
   @override
   void dispose() {
-    channel.sink.close();
+    subscription!.cancel();
     channel2!.sink.close();
     super.dispose();
   }
